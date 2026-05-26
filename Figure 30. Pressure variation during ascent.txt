@@ -1,0 +1,69 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv(
+    "housekeeping_log9963.csv",
+    header=None
+)
+
+df.columns = [
+    "timestamp",
+    "internal_temp",
+    "pressure_mbar",
+    "external_temp",
+    "sensor_temp",
+    "col6",
+    "col7",
+    "col8",
+    "col9",
+    "battery"
+]
+
+df["pressure_mbar"] = pd.to_numeric(
+    df["pressure_mbar"],
+    errors="coerce"
+)
+
+df = df.dropna(subset=["pressure_mbar"])
+
+P0 = 1013.25  # sea level pressure (mbar)
+
+df["altitude_m"] = 44330 * (
+    1 - (df["pressure_mbar"] / P0) ** 0.1903
+)
+
+df["altitude_km"] = df["altitude_m"] / 1000
+
+plt.figure(figsize=(7, 8))
+
+plt.plot(
+    df["pressure_mbar"],
+    df["altitude_km"],
+    linewidth=2
+)
+
+plt.text(
+    520,
+    7.2,
+    "Planned trigger condition:\n35 mbar (23km)\nnot reached before power loss",
+    fontsize=10
+)
+
+plt.xlabel("Pressure (mbar)")
+plt.ylabel("Altitude (km)")
+
+plt.title("Pressure Profile During SQRT Ascent")
+
+plt.grid(True, alpha=0.3)
+
+# Focus on actual telemetry region
+plt.ylim(0, 9)
+
+plt.tight_layout()
+
+plt.savefig(
+    "sqrt_pressure_vs_altitude.png",
+    dpi=300
+)
+
+plt.show()
