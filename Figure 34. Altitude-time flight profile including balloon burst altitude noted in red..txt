@@ -2,15 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-# =====================================================
-# LOAD SKYNET TELEMETRY
-# =====================================================
 df = pd.read_csv("hk_20260412_063824.csv")
 df.columns = df.columns.str.strip().str.lower()
 
-# =====================================================
-# CHOOSE COLUMNS
-# =====================================================
 time_col = "timestamp_utc"
 alt_col = "gps_altitude"
 
@@ -18,46 +12,32 @@ df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
 df[alt_col] = pd.to_numeric(df[alt_col], errors="coerce")
 
 df = df.dropna(subset=[time_col, alt_col])
-
-# Convert UTC to local time
 df["timestamp_local"] = df[time_col] + pd.Timedelta(hours=1)
-
-# Altitude in km
 df["altitude_km"] = df[alt_col] / 1000
 
-# Remove bad values
 df = df[
     (df["altitude_km"] >= 0) &
     (df["altitude_km"] < 40)
 ].copy()
 
-# Sort by time
 df = df.sort_values("timestamp_local").reset_index(drop=True)
 
-# Remove obvious altitude spikes
 df = df[
     df["altitude_km"].diff().abs() < 2
 ].reset_index(drop=True)
 
-# Smooth altitude profile
 df["altitude_smooth_km"] = (
     df["altitude_km"]
     .rolling(window=15, center=True, min_periods=1)
     .mean()
 )
 
-# =====================================================
-# FIND KEY EVENTS
-# =====================================================
 burst_index = df["altitude_smooth_km"].idxmax()
 burst_time = df.loc[burst_index, "timestamp_local"]
 burst_altitude = df.loc[burst_index, "altitude_smooth_km"]
 
 landing_time = df["timestamp_local"].iloc[-1]
 
-# =====================================================
-# CREATE ALTITUDE-TIME PLOT
-# =====================================================
 plt.figure(figsize=(11, 6))
 
 plt.plot(
@@ -68,7 +48,6 @@ plt.plot(
     label="Smoothed altitude profile"
 )
 
-# Burst marker
 plt.scatter(
     burst_time,
     burst_altitude,
@@ -87,7 +66,6 @@ plt.text(
     ha="center"
 )
 
-# Launch label
 plt.text(
     pd.Timestamp("2026-04-12 11:30:00"),
     10,
@@ -96,7 +74,6 @@ plt.text(
     fontsize=10
 )
 
-# Descent label
 plt.text(
     burst_time + pd.Timedelta(minutes=17),
     burst_altitude * 0.55,
@@ -105,7 +82,6 @@ plt.text(
     fontsize=10
 )
 
-# Landing label
 plt.text(
     landing_time - pd.Timedelta(minutes=30),
     1.5,
@@ -114,9 +90,6 @@ plt.text(
     fontsize=10
 )
 
-# =====================================================
-# FORMAT TIME AXIS
-# =====================================================
 ax = plt.gca()
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
 plt.xticks(rotation=20)
@@ -135,9 +108,6 @@ plt.tight_layout()
 plt.savefig("altitude_time_profile_clean.png", dpi=300)
 plt.show()
 
-# =====================================================
-# PRINT SUMMARY METRICS
-# =====================================================
 print(f"Burst altitude: {burst_altitude:.2f} km")
 print(f"Burst time: {burst_time}")
 print(f"Landing/recovery end time in telemetry: {landing_time}")
