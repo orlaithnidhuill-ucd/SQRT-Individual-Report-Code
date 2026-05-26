@@ -1,0 +1,92 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+df = pd.read_csv("housekeeping_log9963.csv", header=None)
+df.columns = [
+    "timestamp_raw",
+    "internal_temp",
+    "pressure_mbar",
+    "external_temp",
+    "sensor_temp",
+    "col6",
+    "col7",
+    "col8",
+    "col9",
+    "battery"
+]
+
+df["pressure_mbar"] = pd.to_numeric(df["pressure_mbar"], errors="coerce")
+df = df.dropna(subset=["pressure_mbar"])
+df = df[
+    (df["pressure_mbar"] > 20) &
+    (df["pressure_mbar"] < 1050)
+]
+df = df.reset_index(drop=True)
+
+start_time = pd.Timestamp("2026-04-12 11:57:00")
+
+df["timestamp_local"] = (
+    start_time + pd.to_timedelta(df.index, unit="s")
+)
+
+plt.figure(figsize=(10, 6))
+
+plt.axvspan(
+    pd.Timestamp("2026-04-12 11:57:00"),
+    pd.Timestamp("2026-04-12 12:06:00"),
+    color="lightblue",
+    alpha=0.3
+)
+
+plt.plot(
+    df["timestamp_local"],
+    df["pressure_mbar"],
+    color="red",
+    linewidth=3,
+    linestyle="--"
+)
+
+plt.gca().invert_yaxis()
+
+ax = plt.gca()
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+plt.xticks(rotation=20)
+
+plt.xlim(
+    pd.Timestamp("2026-04-12 11:57:00"),
+    pd.Timestamp("2026-04-12 12:20:00")
+)
+
+plt.ylim(1050, 300)
+plt.text(
+    pd.Timestamp("2026-04-12 11:59:00"),
+    1005,
+    "Ground operations",
+    color="blue",
+    fontsize=10
+)
+
+plt.text(
+    pd.Timestamp("2026-04-12 12:11:30"),
+    350,
+    "SQRT telemetry terminated\nprematurely during ascent",
+    color="red",
+    fontsize=10,
+    ha="left"
+)
+
+plt.xlabel("Local Time")
+plt.ylabel("Pressure (mbar)")
+plt.title("SQRT Atmospheric Pressure During Ascent")
+
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+
+plt.savefig(
+    "sqrt_pressure_vs_time_ground_ops_corrected.png",
+    dpi=300
+)
+
+plt.show()
